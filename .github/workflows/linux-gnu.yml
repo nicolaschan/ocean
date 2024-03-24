@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: sudo apt-get install libpango1.0-dev
     - name: Build
       run: cargo build --release --verbose
     - name: Run tests
