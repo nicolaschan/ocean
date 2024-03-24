@@ -1,6 +1,7 @@
 use std::env;
 
 use druid::{ExtEventSink, Target};
+use pty_process::Size;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::Child,
@@ -8,9 +9,7 @@ use tokio::{
 };
 use tracing::{debug, error};
 
-use crate::config::model::AppConfig;
-
-pub const SHELL_OUTPUT: druid::Selector<Vec<u8>> = druid::Selector::new("shell-output");
+use crate::{app::events::SHELL_OUTPUT, config::model::AppConfig};
 
 pub fn get_shell(config: &AppConfig) -> String {
     if let Some(shell) = &config.defaults.shell {
@@ -26,6 +25,7 @@ pub async fn spawn_shell(
     mut rx: mpsc::UnboundedReceiver<String>,
 ) -> Child {
     let pty = pty_process::Pty::new().expect("Failed to create PTY");
+    pty.resize(Size::new(100, 100)).unwrap();
     let child = pty_process::Command::new(get_shell(config))
         .spawn(&pty.pts().unwrap())
         .expect("Failed to start shell process");

@@ -1,23 +1,19 @@
-use std::sync::{Arc, Mutex};
-
+use app::delegate::Delegate;
+use app::state::AppState;
 use config::model::AppConfig;
 use druid::text::{FontDescriptor, FontFamily};
 use druid::widget::{Flex, Label, Scroll};
-use druid::{
-    AppDelegate, AppLauncher, Application, Color, Data, DelegateCtx, Env, Event, ExtEventSink,
-    Lens, Target, Widget, WidgetExt, WindowDesc,
-};
-use druid::{KbKey, UnitPoint};
-use shell::{get_shell, SHELL_OUTPUT};
-use termwiz::escape::parser::Parser;
-use termwiz::escape::{Action, ControlCode};
+use druid::UnitPoint;
+use druid::{AppLauncher, Color, Target, Widget, WidgetExt, WindowDesc};
+use shell::get_shell;
 use tokio::sync::mpsc;
-use tracing::{debug, error};
+use tracing::debug;
 
+use crate::app::events::PROCESS_EXITED;
+
+mod app;
 mod config;
 mod shell;
-
-pub const PROCESS_EXITED: druid::Selector<()> = druid::Selector::new("process-exited");
 
 fn build_ui(config: &AppConfig) -> impl Widget<AppState> {
     let font_family = FontFamily::new_unchecked(config.font.family.clone());
@@ -42,140 +38,6 @@ fn build_ui(config: &AppConfig) -> impl Widget<AppState> {
         ))
 }
 
-#[derive(Clone, Data, Lens)]
-pub struct AppState {
-    shell_string: String,
-    cursor_pos: usize,
-    #[data(eq)]
-    shell_output: Vec<u8>,
-    #[data(ignore)]
-    parser: Arc<Mutex<Parser>>,
-}
-
-impl AppState {
-    pub fn get_as_string(&self) -> String {
-        self.shell_string.clone() + "█"
-        // String::from_utf8_lossy(&self.shell_output).to_string()
-    }
-}
-
-pub struct Delegate {
-    shell_tx: mpsc::UnboundedSender<String>,
-    _event_sink: ExtEventSink,
-}
-
-impl AppDelegate<AppState> for Delegate {
-    fn command(
-        &mut self,
-        _ctx: &mut druid::DelegateCtx,
-        _target: druid::Target,
-        cmd: &druid::Command,
-        data: &mut AppState,
-        _env: &druid::widget::prelude::Env,
-    ) -> druid::Handled {
-        if let Some(_) = cmd.get(PROCESS_EXITED) {
-            debug!("Handle shell process exited");
-            Application::global().quit();
-            return druid::Handled::Yes;
-        }
-        if let Some(shell_output) = cmd.get(SHELL_OUTPUT) {
-            data.shell_output
-                .extend_from_slice(&shell_output.as_slice());
-            let actions = data
-                .parser
-                .lock()
-                .unwrap()
-                .parse_as_vec(&shell_output.as_slice());
-            debug!("Shell output (utf8 lossy): {:?}", actions);
-            for action in actions {
-                match action {
-                    Action::Print(c) => {
-                        data.shell_string.push(c);
-                    }
-                    Action::Control(c) => match c {
-                        ControlCode::LineFeed => {
-                            data.shell_string.push('\n');
-                        }
-                        ControlCode::CarriageReturn => {
-                            // data.shell_string.push('\r');
-                        }
-                        ControlCode::Backspace => {
-                            data.shell_string.pop();
-                        }
-                        _ => {}
-                    },
-                    _ => {}
-                }
-            }
-            return druid::Handled::Yes;
-        }
-        druid::Handled::No
-    }
-
-    fn event(
-        &mut self,
-        _ctx: &mut DelegateCtx,
-        _window_id: druid::WindowId,
-        event: Event,
-        _data: &mut AppState,
-        _env: &Env,
-    ) -> Option<Event> {
-        match event.clone() {
-            Event::KeyDown(key_event) => match key_event.key {
-                KbKey::Character(c) => {
-                    if key_event.mods.ctrl() {
-                        if key_event.mods.shift() {
-                            match c.chars().next() {
-                                Some('V') => {
-                                    let copy_paste_contents =
-                                        Application::global().clipboard().get_string().unwrap();
-                                    if let Err(e) = self.shell_tx.send(copy_paste_contents) {
-                                        error!("Error sending key to shell: {}", e);
-                                    }
-                                    return Some(event.clone());
-                                }
-                                _ => (),
-                            }
-                        }
-                        match c.chars().next() {
-                            Some('c') => {
-                                if let Err(e) = self.shell_tx.send("\x03".to_string()) {
-                                    error!("Error sending key to shell: {}", e);
-                                }
-                                return Some(event.clone());
-                            }
-                            Some('d') => {
-                                if let Err(e) = self.shell_tx.send("\x04".to_string()) {
-                                    error!("Error sending key to shell: {}", e);
-                                }
-                                return Some(event.clone());
-                            }
-                            _ => (),
-                        }
-                    }
-                    if let Err(e) = self.shell_tx.send(c.to_string()) {
-                        error!("Error sending key to shell: {}", e);
-                    }
-                }
-                KbKey::Enter => {
-                    if let Err(e) = self.shell_tx.send("\n".to_string()) {
-                        error!("Error sending key to shell: {}", e);
-                    }
-                }
-                KbKey::Backspace => {
-                    if let Err(e) = self.shell_tx.send("\x7f".to_string()) {
-                        error!("Error sending key to shell: {}", e);
-                    }
-                }
-                _ => (),
-            },
-            _ => (),
-        }
-
-        Some(event.clone())
-    }
-}
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -191,19 +53,11 @@ async fn main() {
 
     let launcher = AppLauncher::with_window(main_window);
     let event_sink = launcher.get_external_handle();
-    let delegate = Delegate {
-        shell_tx,
-        _event_sink: event_sink.clone(),
-    };
+    let delegate = Delegate { shell_tx };
 
-    let app_state = AppState {
-        cursor_pos: 0,
-        shell_string: String::new(),
-        shell_output: Vec::new(),
-        parser: Arc::new(Mutex::new(Parser::new())),
-    };
+    let app_state = AppState::new();
 
-    tokio::spawn(async move {
+    let shell = tokio::spawn(async move {
         let mut child = shell::spawn_shell(&config, event_sink.clone(), shell_rx).await;
         let _ = child
             .wait()
@@ -219,4 +73,6 @@ async fn main() {
         .delegate(delegate)
         .launch(app_state)
         .expect("Failed to launch application");
+
+    shell.await.unwrap();
 }
