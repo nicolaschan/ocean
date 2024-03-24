@@ -1,15 +1,15 @@
-use std::env;
+use std::{env, sync::mpsc};
 
-use druid::{ExtEventSink, Target};
 use pty_process::Size;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::Child,
-    sync::mpsc,
 };
 use tracing::{debug, error};
 
-use crate::{app::events::SHELL_OUTPUT, config::model::AppConfig};
+use crate::config::model::AppConfig;
+
+use super::event::ShellEvent;
 
 pub fn get_shell(config: &AppConfig) -> String {
     if let Some(shell) = &config.defaults.shell {
@@ -21,8 +21,8 @@ pub fn get_shell(config: &AppConfig) -> String {
 
 pub async fn spawn_shell(
     config: &AppConfig,
-    event_sink: ExtEventSink,
-    mut rx: mpsc::UnboundedReceiver<String>,
+    event_sink: mpsc::Sender<ShellEvent>,
+    mut rx: tokio::sync::mpsc::UnboundedReceiver<String>,
 ) -> Child {
     let pty = pty_process::Pty::new().expect("Failed to create PTY");
     pty.resize(Size::new(100, 100)).unwrap();
@@ -58,8 +58,8 @@ pub async fn spawn_shell(
                 }
                 Ok(n) => {
                     event_sink
-                        .submit_command(SHELL_OUTPUT, buf[..n].to_vec(), Target::Auto)
-                        .expect("Failed to send shell output to UI");
+                        .send(ShellEvent::Output(buf[..n].to_vec()))
+                        .expect("Failed to send shell output event");
                 }
                 Err(e) => {
                     error!("Stdout read failed: {}", e);
