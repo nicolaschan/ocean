@@ -1,0 +1,15 @@
+[defaults]
+shell = "/bin/bash"
+
+[font]
+family = "Cascadia Code"
+size = 20
+
+[window]
+title = "🌊"
+width = 1200.0
+height = 600.0
+transparency = 60.0
+
+[shell]
+command = "zsh"
