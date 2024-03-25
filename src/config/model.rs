@@ -10,15 +10,15 @@ pub struct AppConfig {
 #[derive(Debug, Deserialize)]
 pub struct FontConfig {
     pub family: String,
-    pub size: f64,
+    pub size: f32,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct WindowConfig {
     pub title: String,
-    pub transparency: f64,
-    pub width: f64,
-    pub height: f64,
+    pub transparency: f32,
+    pub width: f32,
+    pub height: f32,
 }
 
 #[derive(Debug, Deserialize)]

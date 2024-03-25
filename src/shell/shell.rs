@@ -1,4 +1,4 @@
-use std::{env, sync::mpsc};
+use std::env;
 
 use pty_process::Size;
 use tokio::{
@@ -21,7 +21,7 @@ pub fn get_shell(config: &AppConfig) -> String {
 
 pub async fn spawn_shell(
     config: &AppConfig,
-    event_sink: mpsc::Sender<ShellEvent>,
+    event_sink: crossbeam::channel::Sender<ShellEvent>,
     mut rx: tokio::sync::mpsc::UnboundedReceiver<String>,
 ) -> Child {
     let pty = pty_process::Pty::new().expect("Failed to create PTY");

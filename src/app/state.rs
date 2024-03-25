@@ -20,7 +20,7 @@ impl TerminalState {
         }
     }
 
-    pub fn consume(&mut self, event: ShellEvent) {
+    pub fn consume(&mut self, event: &ShellEvent) {
         match event {
             ShellEvent::Output(output) => {
                 let actions = self.parser.lock().unwrap().parse_as_vec(&output.as_slice());
@@ -49,7 +49,9 @@ impl TerminalState {
         }
     }
 
-    pub fn get_as_string(&self) -> String {
-        self.shell_string.clone() + "█"
+    pub fn get_lines(&self, num_lines: usize) -> String {
+        let lines: Vec<&str> = self.shell_string.lines().collect();
+        let last: Vec<&str> = lines.iter().rev().take(num_lines).cloned().collect();
+        last.into_iter().rev().collect::<Vec<_>>().join("\n") + "█"
     }
 }

@@ -2,14 +2,14 @@
 shell = "/bin/bash"
 
 [font]
-family = "Cascadia Code"
+family = "/usr/share/fonts/TTF/CascadiaCode.ttf"
 size = 20
 
 [window]
 title = "🌊"
 width = 1200.0
 height = 600.0
-transparency = 60.0
+transparency = 0.7
 
 [shell]
 command = "zsh"
