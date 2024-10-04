@@ -44,6 +44,10 @@
           shellHook = ''
             export LD_LIBRARY_PATH=${pkgs.libxkbcommon}/lib:$LD_LIBRARY_PATH
             export LD_LIBRARY_PATH=${pkgs.libGL}/lib:$LD_LIBRARY_PATH
+
+            # Workaround for "Failed to set cursor to Default"
+            # https://github.com/bevyengine/bevy/issues/4768
+            XCURSOR_THEME=Adwaita
           '';
         };
 

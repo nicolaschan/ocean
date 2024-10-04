@@ -4,9 +4,8 @@ use std::{collections::HashMap, thread};
 use bevy::window::CompositeAlphaMode;
 use bevy::{
     app::AppExit,
-    input::keyboard::{Key, KeyboardInput},
     prelude::*,
-    window::PresentMode,
+    window::{Cursor, PresentMode},
 };
 use ocean::{
     app::state::TerminalState,
@@ -151,6 +150,7 @@ fn main() {
                 present_mode: PresentMode::Fifo,
                 transparent: true,
                 title: window_title,
+                cursor: Cursor::default(),
                 #[cfg(target_os = "macos")]
                 composite_alpha_mode: CompositeAlphaMode::PostMultiplied,
                 ..default()
