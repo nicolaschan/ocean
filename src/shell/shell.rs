@@ -5,7 +5,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::Child,
 };
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 use crate::config::model::AppConfig;
 
@@ -15,8 +15,7 @@ pub fn get_shell(config: &AppConfig) -> String {
     if let Some(shell) = &config.defaults.shell {
         return shell.clone();
     }
-    let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-    shell
+    env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
 }
 
 pub async fn spawn_shell(
@@ -26,9 +25,12 @@ pub async fn spawn_shell(
 ) -> Child {
     let pty = pty_process::Pty::new().expect("Failed to create PTY");
     pty.resize(Size::new(100, 100)).unwrap();
-    let child = pty_process::Command::new(get_shell(config))
+    let shell = get_shell(config);
+    info!("Starting shell: {}", shell);
+    let expect_msg = format!("Failed to start shell process {:?}", shell);
+    let child = pty_process::Command::new(&shell)
         .spawn(&pty.pts().unwrap())
-        .expect("Failed to start shell process");
+        .expect(&expect_msg);
 
     let (mut read_pty, mut write_pty) = pty.into_split();
 

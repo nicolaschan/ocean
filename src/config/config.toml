@@ -1,5 +1,5 @@
 [defaults]
-shell = "/bin/bash"
+shell = "/bin/sh"
 
 [font]
 family = "/usr/share/fonts/TTF/CascadiaCode.ttf"
@@ -10,6 +10,3 @@ title = "🌊"
 width = 1200.0
 height = 600.0
 transparency = 0.7
-
-[shell]
-command = "zsh"

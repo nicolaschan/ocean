@@ -6,16 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = "0.13.1"
+bevy = { version = "0.13.2", features = ["wayland"] }
 cosmic-text = "0.11.2"
 crossbeam = "0.8.4"
 directories = "5.0.1"
 fontdue = "0.8.0"
-once_cell = "1.19.0"
+once_cell = "1.20.1"
 pty-process = { version = "0.4.0", features = ["async"] }
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive"] }
 termwiz = "0.22.0"
-tokio = { version = "1.36.0", features = ["full"] }
-toml = "0.8.12"
+tokio = { version = "1.40.0", features = ["full"] }
+toml = "0.8.19"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"

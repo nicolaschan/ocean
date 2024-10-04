@@ -1,5 +1,7 @@
 use std::fs;
 
+use tracing::info;
+
 use super::model::AppConfig;
 
 pub const DEFAULT_CONFIG: &str = include_str!("config.toml");
@@ -17,6 +19,7 @@ fn config_file_path() -> String {
 
 pub fn read_config() -> Result<AppConfig, Box<dyn std::error::Error>> {
     let file_path = &config_file_path();
+    info!("Reading config from: {}", file_path);
     let config_str = match fs::read_to_string(file_path) {
         Ok(config_str) => config_str,
         Err(_) => {
