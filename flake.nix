@@ -47,7 +47,7 @@
 
             # Workaround for "Failed to set cursor to Default"
             # https://github.com/bevyengine/bevy/issues/4768
-            XCURSOR_THEME=Adwaita
+            export XCURSOR_THEME=Adwaita
           '';
         };
 
