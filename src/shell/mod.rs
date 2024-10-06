@@ -1,2 +1,2 @@
-pub mod shell;
 pub mod event;
+pub mod pty;

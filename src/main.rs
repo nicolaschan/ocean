@@ -9,8 +9,8 @@ use bevy::{
 };
 use ocean::{
     app::state::TerminalState,
-    config::config,
-    shell::{event::ShellEvent, shell},
+    config::file,
+    shell::{event::ShellEvent, pty},
 };
 use once_cell::sync::Lazy;
 use tokio::sync::mpsc;
@@ -27,7 +27,7 @@ struct Terminal {
 struct ShellSender(mpsc::UnboundedSender<String>);
 
 fn add_text(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let config = config::read_config().unwrap();
+    let config = file::read_config().unwrap();
 
     commands.spawn(Camera2dBundle::default());
     commands.spawn(TextBundle {
@@ -48,7 +48,7 @@ fn handle_update_event(
     mut terminals: Query<&mut Terminal>,
     mut exit: EventWriter<AppExit>,
 ) {
-    for event in events.read().into_iter() {
+    for event in events.read() {
         if event.0 == ShellEvent::ProcessExited {
             debug!("Shell process exited");
             exit.send(AppExit);
@@ -66,7 +66,7 @@ fn handle_received_characters(
     keyboard: Res<ButtonInput<KeyCode>>,
     shell_tx: ResMut<ShellSender>,
 ) {
-    if keyboard.any_pressed([KeyCode::ControlLeft]) {
+    if keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::CapsLock]) {
         return;
     }
     for event in events.read() {
@@ -92,7 +92,7 @@ fn handle_key_chords(
     keyboard: Res<ButtonInput<KeyCode>>,
     shell_tx: ResMut<ShellSender>,
 ) {
-    if !keyboard.any_pressed([KeyCode::ControlLeft]) {
+    if !keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::CapsLock]) {
         return;
     }
     for event in events.read() {
@@ -110,15 +110,15 @@ fn handle_key_chords(
 fn redraw_terminal(terminals: Query<&Terminal>, mut text: Query<&mut Text>) {
     for terminal in terminals.iter() {
         for mut text in text.iter_mut() {
-            text.sections[0].value = terminal.terminal_state.get_lines(20);
+            text.sections[0].value = terminal.terminal_state.get_lines();
         }
     }
 }
 
 fn main() {
-    let config = config::read_config().unwrap();
+    let config = file::read_config().unwrap();
 
-    let window_title = format!("{} — {}", shell::get_shell(&config), config.window.title);
+    let window_title = format!("{} — {}", pty::get_shell(&config), config.window.title);
     let background_color = ClearColor(Color::rgba(0.0, 0.0, 0.0, config.window.transparency));
 
     let (event_sink, shell_event_receiver) = crossbeam::channel::unbounded();
@@ -131,7 +131,7 @@ fn main() {
             .expect("Failed to build tokio runtime");
 
         runtime.block_on(async move {
-            let mut child = shell::spawn_shell(&config, event_sink.clone(), shell_rx).await;
+            let mut child = pty::spawn_shell(&config, event_sink.clone(), shell_rx).await;
             let _ = child
                 .wait()
                 .await
@@ -160,7 +160,7 @@ fn main() {
         .insert_resource(ShellSender(shell_tx))
         .add_systems(Startup, move |mut commands: Commands| {
             commands.spawn(Terminal {
-                terminal_state: TerminalState::new(),
+                terminal_state: TerminalState::default(),
             });
         })
         .add_systems(Startup, add_text)

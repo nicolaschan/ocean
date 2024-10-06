@@ -39,7 +39,7 @@ pub async fn spawn_shell(
             match rx.recv().await {
                 Some(input) => {
                     debug!("Reading from user and writing to stdin: {:?}", input);
-                    write_pty.write_all(&input.as_bytes()).await.unwrap();
+                    write_pty.write_all(input.as_bytes()).await.unwrap();
                 }
                 None => {
                     error!("Nothing to read from user");
